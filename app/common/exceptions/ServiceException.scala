@@ -18,4 +18,5 @@ package common.exceptions
 
 sealed trait ServiceException
 
-final case class GenericServiceException(oe: Option[Exception]) extends ServiceException
+case object EntityNotFound extends ServiceException
+final case class GenericServiceException(message:String, oe: Option[Exception]) extends ServiceException

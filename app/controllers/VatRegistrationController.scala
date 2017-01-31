@@ -18,7 +18,9 @@ package controllers
 
 import javax.inject.Inject
 
+import common.exceptions.EntityNotFound
 import connectors.AuthConnector
+import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent}
 import services.RegistrationService
@@ -28,13 +30,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class VatRegistrationController @Inject()(val auth: AuthConnector, vatRegistrationService: RegistrationService) extends VatRegistrationBaseController {
 
-
   def newVatRegistration: Action[AnyContent] = Action.async {
     implicit request =>
       authenticated { _ =>
         vatRegistrationService.createNewRegistration.value.map {
           case Right(vatScheme) => Created(Json.toJson(vatScheme))
-          case Left(ex@_) => ServiceUnavailable
+          case Left(EntityNotFound) => Forbidden
+          case Left(ex@_) =>
+            Logger.warn("Problem: " + ex.toString)
+            ServiceUnavailable
         }
       }
   }

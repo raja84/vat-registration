@@ -38,11 +38,14 @@ class VatRegistrationService @Inject()(brConnector: BusinessRegistrationConnecto
                                       ) extends RegistrationService {
 
   override def createNewRegistration(implicit headerCarrier: HeaderCarrier): ServiceResult[VatScheme] = {
-    val eitherT = for {
+    val repositoryResult = for {
       profile <- brConnector.retrieveCurrentProfile
       vatScheme <- registrationRepository.createNewRegistration(profile.registrationID)
     } yield vatScheme
-    eitherT.leftMap { _ => GenericServiceException(None) }
+    repositoryResult.leftMap {
+      case NotFound => EntityNotFound
+      case rex@_ => GenericServiceException(rex.toString, None)
+    }
   }
 
 }

@@ -18,25 +18,23 @@ package controllers
 
 import javax.inject.Inject
 
-import common.exceptions.GenericServiceException
 import connectors.AuthConnector
-import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent}
 import services.RegistrationService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
+
 class VatRegistrationController @Inject()(val auth: AuthConnector, vatRegistrationService: RegistrationService) extends VatRegistrationBaseController {
+
 
   def newVatRegistration: Action[AnyContent] = Action.async {
     implicit request =>
-      authenticated { user =>
-        vatRegistrationService.createNewRegistration map {
+      authenticated { _ =>
+        vatRegistrationService.createNewRegistration.value.map {
           case Right(vatScheme) => Created(Json.toJson(vatScheme))
-          case Left(GenericServiceException(t)) =>
-            Logger.warn("Exception in service call", t)
-            ServiceUnavailable
+          case Left(ex@_) => ServiceUnavailable
         }
       }
   }

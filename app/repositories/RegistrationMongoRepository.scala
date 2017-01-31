@@ -18,8 +18,8 @@ package repositories
 
 import javax.inject.{Inject, Named}
 
-import auth.AuthorisationResource
-import common.exceptions.{InsertFailed, RetrieveFailed}
+import cats.data.EitherT
+import common.exceptions.{InsertFailed, RepositoryException, RetrieveFailed}
 import helpers.DateTimeHelpers._
 import models._
 import play.api.Logger
@@ -34,9 +34,9 @@ import scala.concurrent.Future
 
 trait RegistrationRepository {
 
-  def createNewRegistration(registrationId: String): Future[VatScheme]
+  def createNewRegistration(registrationId: String): RepositoryResult[VatScheme]
 
-  def retrieveRegistration(registrationId: String): Future[Option[VatScheme]]
+  def retrieveRegistration(registrationId: String): RepositoryResult[Option[VatScheme]]
 
 }
 
@@ -49,8 +49,7 @@ class RegistrationMongoRepository @Inject()(mongoProvider: Function0[DB], @Named
     collectionName = collectionName,
     mongo = mongoProvider,
     domainFormat = VatScheme.format
-  ) with RegistrationRepository
-    with AuthorisationResource[String] {
+  ) with RegistrationRepository {
 
   override def indexes: Seq[Index] = Seq(
     Index(
@@ -62,30 +61,27 @@ class RegistrationMongoRepository @Inject()(mongoProvider: Function0[DB], @Named
 
   private[repositories] def registrationIdSelector(registrationID: String) = BSONDocument("ID" -> BSONString(registrationID))
 
-  override def createNewRegistration(registrationId: String): Future[VatScheme] = {
+  override def createNewRegistration(registrationId: String): RepositoryResult[VatScheme] = {
     val newReg = VatScheme.blank(registrationId)
-    collection.insert(newReg) map {
-      _ => newReg
-    } recover {
-      case e =>
-        Logger.warn(s"Unable to insert new VAT Registration for registration ID $registrationId, Error: ${e.getMessage}")
-        throw InsertFailed(registrationId, "VatScheme")
-    }
+    EitherT[Future, RepositoryException, VatScheme](
+      collection.insert(newReg) map {
+        _ => Right(newReg)
+      } recover {
+        case e =>
+          Logger.warn(s"Unable to insert new VAT Registration for registration ID $registrationId, Error: ${e.getMessage}")
+          Left(InsertFailed(registrationId, "VatScheme"))
+      })
   }
 
-  override def getInternalId(id: String): Future[Option[(String, String)]] = retrieveRegistration(id) map {
-    case Some(vatScheme) => Some(id -> vatScheme.id)
-    case None => None
-  }
-
-
-  override def retrieveRegistration(registrationId: String): Future[Option[VatScheme]] = {
+  override def retrieveRegistration(registrationId: String): RepositoryResult[Option[VatScheme]] = {
     val selector = registrationIdSelector(registrationId)
-    collection.find(selector).one[VatScheme] recover {
-      case e: Exception =>
-        Logger.error(s"Unable to retrieve VAT Registration for registration ID $registrationId, Error: ${e.getMessage}")
-        throw RetrieveFailed(registrationId)
-    }
+    EitherT[Future, RepositoryException, Option[VatScheme]](
+      collection.find(selector).one[VatScheme] map (Right(_)) recover {
+        case e: Exception =>
+          Logger.error(s"Unable to retrieve VAT Registration for registration ID $registrationId, Error: ${e.getMessage}")
+          Left(RetrieveFailed(registrationId))
+      }
+    )
   }
 
 }

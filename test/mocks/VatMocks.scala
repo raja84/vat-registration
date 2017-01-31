@@ -16,6 +16,9 @@
 
 package mocks
 
+import cats.data.EitherT
+import cats.implicits._
+import common.exceptions.ServiceException
 import connectors.{AuthConnector, Authority}
 import helpers.DateTimeHelpers.DateTimeProvider
 import models.VatScheme
@@ -27,6 +30,7 @@ import org.scalatest.mockito.MockitoSugar
 import services.RegistrationService
 import uk.gov.hmrc.play.http.HeaderCarrier
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 trait VatMocks extends WSHTTPMock {
@@ -58,8 +62,9 @@ trait VatMocks extends WSHTTPMock {
   object ServiceMocks {
 
     def mockSuccessfulCreateNewRegistration(registrationId: String): Unit = {
-      implicit val dtp:DateTimeProvider = () => new DateTime(2017,1,31,13,6)
-      when(mockRegistrationService.createNewRegistration(Matchers.any())).thenReturn(Future.successful(Right(VatScheme.blank(registrationId))))
+      implicit val dtp: DateTimeProvider = () => new DateTime(2017, 1, 31, 13, 6)
+      when(mockRegistrationService.createNewRegistration(Matchers.any()))
+        .thenReturn(EitherT.pure[Future, ServiceException, VatScheme](VatScheme.blank(registrationId)))
     }
 
   }

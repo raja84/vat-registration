@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
-package common.exceptions
+import cats.data.EitherT
+import common.exceptions.RepositoryException
 
-sealed trait ServiceException
+import scala.concurrent.Future
 
-final case class GenericServiceException(oe: Option[Exception]) extends ServiceException
+package object repositories {
+
+  type RepositoryResult[T] = EitherT[Future, RepositoryException, T]
+
+}

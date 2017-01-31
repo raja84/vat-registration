@@ -16,18 +16,23 @@
 
 package common.exceptions
 
-import scala.util.control.NoStackTrace
+sealed trait RepositoryException
 
-sealed trait DBExceptions
+final case class PreExistingRegDocument(regId: String) extends RepositoryException
 
-final case class PreExistingRegDocument(regId: String) extends NoStackTrace with DBExceptions
+final case class MissingRegDocument(regId: String) extends RepositoryException
 
-final case class MissingRegDocument(regId: String) extends NoStackTrace with DBExceptions
+final case class UpdateFailed(regId: String, attemptedModel: String) extends RepositoryException
 
-final case class UpdateFailed(regId: String, attemptedModel: String) extends NoStackTrace with DBExceptions
+final case class InsertFailed(regId: String, attemptedModel: String) extends RepositoryException
 
-final case class InsertFailed(regId: String, attemptedModel: String) extends NoStackTrace with DBExceptions
+final case class DeleteFailed(regId: String, msg: String) extends RepositoryException
 
-final case class DeleteFailed(regId: String, msg: String) extends NoStackTrace with DBExceptions
+final case class RetrieveFailed(regId: String) extends RepositoryException
 
-final case class RetrieveFailed(regId: String) extends NoStackTrace with DBExceptions
+
+case object NotFound extends RepositoryException
+
+case object Forbidden extends RepositoryException
+
+final case class GenericRepositoryException(oe: Option[Exception]) extends RepositoryException
